@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>習慣トラッカー</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- PWA対応 -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#007aff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="習慣">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f2f2f7;--card:#fff;--border:#e5e5ea;
+  --text:#1c1c1e;--muted:#8e8e93;
+  --accent:#007aff;--green:#34c759;--red:#ff3b30;
+  --tab-bar:#ffffffee;--radius:16px;--radius-sm:12px;
+}
+body{background:#d1d1d6;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px 16px;}
+.phone-frame{width:390px;height:844px;background:var(--bg);border-radius:52px;box-shadow:0 0 0 1px rgba(0,0,0,.15),0 0 0 10px #1a1a1a,0 0 0 12px #2a2a2a,0 30px 80px rgba(0,0,0,.4);overflow:hidden;position:relative;display:flex;flex-direction:column;}
+.dynamic-island{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:120px;height:34px;background:#1a1a1a;border-radius:20px;z-index:100;}
+.status-bar{height:54px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 28px 8px;flex-shrink:0;position:relative;z-index:10;}
+.status-time{font-size:15px;font-weight:600;color:var(--text);font-family:'DM Mono',monospace;}
+.status-icons{display:flex;align-items:center;gap:6px;color:var(--text);}
+.battery{width:25px;height:12px;border:1.5px solid var(--text);border-radius:3px;position:relative;display:flex;align-items:center;padding:1.5px;}
+.battery::after{content:'';position:absolute;right:-4px;top:50%;transform:translateY(-50%);width:2.5px;height:6px;background:var(--text);border-radius:0 1px 1px 0;}
+.battery-fill{height:100%;background:var(--text);border-radius:1.5px;width:75%;}
+.screen{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.screen-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.screen-scroll::-webkit-scrollbar{display:none;}
+.tab-content{display:none;padding:0 16px 16px;animation:fadeUp .2s ease;}
+.tab-content.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.page-header{padding:16px 0 20px;}
+.page-title{font-size:28px;font-weight:600;letter-spacing:-.5px;color:var(--text);}
+.page-subtitle{font-size:13px;color:var(--muted);margin-top:2px;}
+.card{background:var(--card);border-radius:var(--radius);overflow:hidden;margin-bottom:12px;}
+.add-card{background:var(--card);border-radius:var(--radius);padding:14px;margin-bottom:12px;display:flex;gap:10px;align-items:center;}
+.add-card input{flex:1;border:none;outline:none;font-family:inherit;font-size:15px;color:var(--text);background:transparent;}
+.add-card input::placeholder{color:var(--muted);}
+.add-card button{background:var(--accent);border:none;border-radius:10px;color:#fff;font-family:inherit;font-size:13px;font-weight:600;padding:8px 14px;cursor:pointer;transition:opacity .15s;}
+.add-card button:active{opacity:.7;}
+.progress-card{background:var(--accent);border-radius:var(--radius);padding:18px;margin-bottom:12px;color:#fff;}
+.progress-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
+.progress-main{font-size:32px;font-weight:600;letter-spacing:-1px;}
+.progress-sub{font-size:13px;opacity:.8;}
+.prog-bar-track{height:6px;background:rgba(255,255,255,.3);border-radius:3px;overflow:hidden;}
+.prog-bar-fill{height:100%;background:#fff;border-radius:3px;transition:width .4s cubic-bezier(.34,1.56,.64,1);}
+.section-label{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 8px;}
+.habit-row{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid var(--border);}
+.habit-row:last-child{border-bottom:none;}
+.h-check{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);background:transparent;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.h-check.done{background:var(--green);border-color:var(--green);}
+.h-check.done::after{content:'';display:block;width:7px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translate(1px,-1px);}
+.h-info{flex:1;min-width:0;}
+.h-name{font-size:15px;color:var(--text);}
+.h-name.done{color:var(--muted);text-decoration:line-through;}
+.h-meta{font-size:12px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;}
+.h-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:4px;opacity:.4;}
+.h-del:active{opacity:1;color:var(--red);}
+.empty-state{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px;}
+.cal-nav-row{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 12px;}
+.cal-month{font-size:17px;font-weight:600;color:var(--text);}
+.cal-btn{background:#f2f2f7;border:none;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--accent);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;padding:0 12px 16px;}
+.cal-dl{text-align:center;font-size:11px;color:var(--muted);padding:4px 0;font-weight:500;}
+.cal-c{aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-family:'DM Mono',monospace;}
+.cal-c.today{background:var(--accent);color:#fff;font-weight:600;}
+.cal-c.full{background:#d1fae5;color:#059669;font-weight:600;}
+.cal-c.partial{background:#fef3c7;color:#d97706;}
+.cal-c.past{color:var(--border);}
+.cal-legend{display:flex;gap:12px;padding:0 16px 16px;font-size:11px;color:var(--muted);}
+.cal-legend span{display:flex;align-items:center;gap:4px;}
+.ldot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.stat-card{background:var(--card);border-radius:var(--radius-sm);padding:16px;}
+.stat-lbl{font-size:11px;color:var(--muted);font-weight:500;margin-bottom:6px;}
+.stat-val{font-size:28px;font-weight:300;font-family:'DM Mono',monospace;letter-spacing:-1px;color:var(--text);}
+.stat-unit{font-size:11px;color:var(--muted);margin-top:2px;}
+.weekly-card{background:var(--card);border-radius:var(--radius-sm);padding:16px;}
+.weekly-lbl{font-size:12px;color:var(--muted);margin-bottom:12px;}
+.weekly-bars{display:flex;gap:6px;align-items:flex-end;height:56px;}
+.bwrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;}
+.bbar{width:100%;border-radius:4px 4px 0 0;min-height:3px;transition:height .3s ease;}
+.blbl{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;}
+
+/* AI Coach */
+.coach-intro{background:linear-gradient(135deg,#667eea,#764ba2);border-radius:var(--radius);padding:18px;margin-bottom:12px;color:#fff;}
+.coach-intro-top{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.coach-avatar{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:18px;}
+.coach-name{font-size:16px;font-weight:600;}
+.coach-desc{font-size:13px;opacity:.85;line-height:1.5;}
+.chat-area{background:var(--card);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;}
+.chat-messages{padding:16px;display:flex;flex-direction:column;gap:12px;min-height:120px;max-height:320px;overflow-y:auto;scrollbar-width:none;}
+.chat-messages::-webkit-scrollbar{display:none;}
+.msg{max-width:85%;animation:fadeUp .2s ease;}
+.msg-ai{align-self:flex-start;}
+.msg-user{align-self:flex-end;}
+.msg-bubble{padding:10px 14px;border-radius:18px;font-size:14px;line-height:1.5;}
+.msg-ai .msg-bubble{background:#f2f2f7;color:var(--text);border-bottom-left-radius:4px;}
+.msg-user .msg-bubble{background:var(--accent);color:#fff;border-bottom-right-radius:4px;}
+.msg-time{font-size:10px;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace;}
+.msg-user .msg-time{text-align:right;padding-right:4px;}
+.msg-ai .msg-time{padding-left:4px;}
+.typing-indicator{align-self:flex-start;}
+.typing-bubble{background:#f2f2f7;border-radius:18px;border-bottom-left-radius:4px;padding:12px 16px;display:flex;gap:4px;align-items:center;}
+.typing-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:typingBounce 1.2s ease infinite;}
+.typing-dot:nth-child(2){animation-delay:.2s;}
+.typing-dot:nth-child(3){animation-delay:.4s;}
+@keyframes typingBounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-6px);}}
+.chat-input-row{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);}
+.chat-input{flex:1;border:none;outline:none;font-family:inherit;font-size:14px;color:var(--text);background:transparent;}
+.chat-input::placeholder{color:var(--muted);}
+.chat-send{background:var(--accent);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.chat-send:disabled{opacity:.4;cursor:default;}
+.chat-send svg{width:14px;height:14px;fill:#fff;}
+.quick-btns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.quick-btn{background:var(--card);border:1px solid var(--border);border-radius:20px;color:var(--accent);font-family:inherit;font-size:12px;font-weight:500;padding:6px 12px;cursor:pointer;}
+.quick-btn:active{background:#f2f2f7;}
+
+/* Error toast */
+.toast{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);background:#1c1c1e;color:#fff;font-size:13px;padding:10px 18px;border-radius:20px;white-space:nowrap;opacity:0;transition:opacity .3s;pointer-events:none;z-index:200;}
+.toast.show{opacity:1;}
+
+/* Tab bar */
+.tab-bar{height:83px;background:var(--tab-bar);backdrop-filter:blur(20px);border-top:1px solid rgba(0,0,0,.08);display:flex;align-items:flex-start;padding-top:8px;flex-shrink:0;}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:0;}
+.tab-icon{width:28px;height:28px;display:flex;align-items:center;justify-content:center;}
+.tab-icon svg{width:24px;height:24px;stroke:var(--muted);fill:none;transition:stroke .15s;}
+.tab-label{font-size:10px;font-family:'DM Sans',sans-serif;font-weight:500;color:var(--muted);transition:color .15s;}
+.tab-item.active .tab-icon svg{stroke:var(--accent);}
+.tab-item.active .tab-label{color:var(--accent);}
+</style>
+</head>
+<body>
+<div class="phone-frame">
+  <div class="dynamic-island"></div>
+  <div class="status-bar">
+    <div class="status-time" id="statusTime">9:41</div>
+    <div class="status-icons">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6l5 5 6-7 6 7 5-5"/></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+      <div class="battery"><div class="battery-fill"></div></div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <div class="screen-scroll">
+
+      <!-- TODAY -->
+      <div class="tab-content active" id="tab-today">
+        <div class="page-header">
+          <div class="page-title">今日</div>
+          <div class="page-subtitle" id="todaySubtitle"></div>
+        </div>
+        <div class="progress-card">
+          <div class="progress-top">
+            <div class="progress-main" id="progressFraction">0/0</div>
+            <div class="progress-sub" id="progressPct">0%</div>
+          </div>
+          <div style="font-size:13px;opacity:.85;margin-bottom:8px;">達成済み</div>
+          <div class="prog-bar-track"><div class="prog-bar-fill" id="progFill" style="width:0%"></div></div>
+        </div>
+        <div class="add-card">
+          <input type="text" id="habitInput" placeholder="新しい習慣を追加..." maxlength="30"/>
+          <button id="addBtn">追加</button>
+        </div>
+        <div class="section-label">習慣リスト</div>
+        <div class="card" id="habitList"></div>
+        <div class="empty-state" id="emptyState">まだ習慣がありません<br>上から追加してみましょう</div>
+      </div>
+
+      <!-- CALENDAR -->
+      <div class="tab-content" id="tab-calendar">
+        <div class="page-header">
+          <div class="page-title">カレンダー</div>
+          <div class="page-subtitle">達成状況を振り返る</div>
+        </div>
+        <div class="card">
+          <div class="cal-nav-row">
+            <button class="cal-btn" id="calPrev">‹</button>
+            <div class="cal-month" id="calMonth"></div>
+            <button class="cal-btn" id="calNext">›</button>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+          <div class="cal-legend">
+            <span><span class="ldot" style="background:#059669"></span>全達成</span>
+            <span><span class="ldot" style="background:#d97706"></span>一部達成</span>
+            <span><span class="ldot" style="background:var(--accent)"></span>今日</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STATS -->
+      <div class="tab-content" id="tab-stats">
+        <div class="page-header">
+          <div class="page-title">統計</div>
+          <div class="page-subtitle">あなたの記録</div>
+        </div>
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-lbl">最長 streak</div><div class="stat-val" id="statBest">0</div><div class="stat-unit">🔥 日連続</div></div>
+          <div class="stat-card"><div class="stat-lbl">総達成回数</div><div class="stat-val" id="statTotal">0</div><div class="stat-unit">回</div></div>
+          <div class="stat-card"><div class="stat-lbl">今週の完了率</div><div class="stat-val" id="statWeek">0%</div><div class="stat-unit">過去7日間</div></div>
+          <div class="stat-card"><div class="stat-lbl">登録中</div><div class="stat-val" id="statHabits">0</div><div class="stat-unit">個の習慣</div></div>
+        </div>
+        <div class="weekly-card">
+          <div class="weekly-lbl">過去7日間の達成数</div>
+          <div class="weekly-bars" id="weeklyBars"></div>
+        </div>
+      </div>
+
+      <!-- AI COACH -->
+      <div class="tab-content" id="tab-coach">
+        <div class="page-header">
+          <div class="page-title">AIコーチ</div>
+          <div class="page-subtitle">習慣化の相談役</div>
+        </div>
+        <div class="coach-intro">
+          <div class="coach-intro-top">
+            <div class="coach-avatar">🧠</div>
+            <div class="coach-name">Habit Coach</div>
+          </div>
+          <div class="coach-desc">あなたの習慣データをもとに、行動科学・習慣化研究に基づいた具体的なアドバイスをします。</div>
+        </div>
+        <div class="quick-btns">
+          <button class="quick-btn" data-q="今週の自分の状況を分析して">📊 今週を分析</button>
+          <button class="quick-btn" data-q="習慣が続かない理由と対策を教えて">🤔 続かない理由は？</button>
+          <button class="quick-btn" data-q="streakを伸ばすための具体的なコツを教えて">🔥 streakを伸ばすには</button>
+          <button class="quick-btn" data-q="習慣化に関する最新の科学的研究を教えて">📚 習慣化の研究</button>
+        </div>
+        <div class="chat-area">
+          <div class="chat-messages" id="chatMessages">
+            <div class="msg msg-ai">
+              <div class="msg-bubble">こんにちは！習慣化コーチです。あなたの達成データを見ながら、科学的な根拠に基づいたアドバイスをします。何でも相談してください 💪</div>
+              <div class="msg-time">今日</div>
+            </div>
+          </div>
+          <div class="chat-input-row">
+            <input class="chat-input" id="chatInput" placeholder="相談する..."/>
+            <button class="chat-send" id="chatSend">
+              <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2L15 22 11 13 2 9l20-7z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <nav class="tab-bar">
+    <button class="tab-item active" data-tab="today">
+      <div class="tab-icon"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 16 11 18 15 14"/></svg></div>
+      <span class="tab-label">今日</span>
+    </button>
+    <button class="tab-item" data-tab="calendar">
+      <div class="tab-icon"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+      <span class="tab-label">カレンダー</span>
+    </button>
+    <button class="tab-item" data-tab="stats">
+      <div class="tab-icon"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+      <span class="tab-label">統計</span>
+    </button>
+    <button class="tab-item" data-tab="coach">
+      <div class="tab-icon"><svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+      <span class="tab-label">コーチ</span>
+    </button>
+  </nav>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+const TODAY = new Date().toISOString().slice(0,10);
+let state = JSON.parse(localStorage.getItem('habits_v3')||'null')||{habits:[],logs:{},calYear:new Date().getFullYear(),calMonth:new Date().getMonth()};
+let chatHistory = [];
+const save = () => localStorage.setItem('habits_v3', JSON.stringify(state));
+
+// ★ サーバー経由でAIを呼ぶ（APIキーはここに書かない）
+const API_ENDPOINT = '/api/chat';
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function updateClock(){const n=new Date();document.getElementById('statusTime').textContent=n.getHours()+':'+String(n.getMinutes()).padStart(2,'0');}
+updateClock();setInterval(updateClock,10000);
+
+const d=new Date();
+document.getElementById('todaySubtitle').textContent=`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日・${'日月火水木金土'.split('')[d.getDay()]}曜日`;
+
+document.querySelectorAll('.tab-item').forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll('.tab-item').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    renderAll();
+  };
+});
+
+document.getElementById('addBtn').onclick=addHabit;
+document.getElementById('habitInput').onkeydown=e=>{if(e.key==='Enter')addHabit();};
+function addHabit(){
+  const name=document.getElementById('habitInput').value.trim();
+  if(!name)return;
+  state.habits.push({id:Date.now().toString(),name,createdAt:TODAY});
+  document.getElementById('habitInput').value='';
+  save();renderAll();
+}
+function deleteHabit(id){state.habits=state.habits.filter(h=>h.id!==id);save();renderAll();}
+function toggleHabit(id){
+  if(!state.logs[TODAY])state.logs[TODAY]={};
+  state.logs[TODAY][id]=!state.logs[TODAY][id];
+  save();renderAll();
+}
+function getStreak(id){
+  let s=0,dd=new Date(TODAY);
+  while(true){const k=dd.toISOString().slice(0,10);if((state.logs[k]||{})[id]){s++;dd.setDate(dd.getDate()-1);}else break;}
+  return s;
+}
+function getBestStreak(id){
+  const dates=Object.keys(state.logs).sort();let best=0,cur=0;
+  dates.forEach(k=>{if((state.logs[k]||{})[id]){cur++;if(cur>best)best=cur;}else cur=0;});
+  return best;
+}
+function renderHabits(){
+  const list=document.getElementById('habitList'),empty=document.getElementById('emptyState');
+  const log=state.logs[TODAY]||{};
+  list.innerHTML='';
+  if(!state.habits.length){empty.style.display='';list.style.display='none';return;}
+  empty.style.display='none';list.style.display='';
+  state.habits.forEach(h=>{
+    const done=!!log[h.id],streak=getStreak(h.id);
+    const el=document.createElement('div');el.className='habit-row';
+    el.innerHTML=`<button class="h-check ${done?'done':''}" data-id="${h.id}"></button><div class="h-info"><div class="h-name ${done?'done':''}">${h.name}</div><div class="h-meta">${streak>0?'🔥 '+streak+'日連続':'—'}</div></div><button class="h-del" data-del="${h.id}">×</button>`;
+    el.querySelector('.h-check').onclick=()=>toggleHabit(h.id);
+    el.querySelector('.h-del').onclick=()=>deleteHabit(h.id);
+    list.appendChild(el);
+  });
+}
+function renderProgress(){
+  const log=state.logs[TODAY]||{},total=state.habits.length,done=state.habits.filter(h=>log[h.id]).length;
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('progressFraction').textContent=`${done}/${total}`;
+  document.getElementById('progressPct').textContent=pct+'%';
+  document.getElementById('progFill').style.width=pct+'%';
+}
+function renderCalendar(){
+  const y=state.calYear,m=state.calMonth;
+  document.getElementById('calMonth').textContent=`${y}年${m+1}月`;
+  const grid=document.getElementById('calGrid');grid.innerHTML='';
+  '日月火水木金土'.split('').forEach(l=>{const el=document.createElement('div');el.className='cal-dl';el.textContent=l;grid.appendChild(el);});
+  const first=new Date(y,m,1).getDay(),last=new Date(y,m+1,0).getDate();
+  for(let i=0;i<first;i++){grid.appendChild(document.createElement('div'));}
+  for(let day=1;day<=last;day++){
+    const date=`${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const el=document.createElement('div');el.className='cal-c';el.textContent=day;
+    const log=state.logs[date]||{},total=state.habits.length,done=state.habits.filter(h=>log[h.id]).length;
+    if(date===TODAY)el.classList.add('today');
+    else if(date<TODAY){if(total>0&&done===total)el.classList.add('full');else if(done>0)el.classList.add('partial');else el.classList.add('past');}
+    grid.appendChild(el);
+  }
+}
+document.getElementById('calPrev').onclick=()=>{if(state.calMonth===0){state.calMonth=11;state.calYear--;}else state.calMonth--;save();renderCalendar();};
+document.getElementById('calNext').onclick=()=>{if(state.calMonth===11){state.calMonth=0;state.calYear++;}else state.calMonth++;save();renderCalendar();};
+function renderStats(){
+  document.getElementById('statHabits').textContent=state.habits.length;
+  let best=0;state.habits.forEach(h=>{const b=getBestStreak(h.id);if(b>best)best=b;});
+  document.getElementById('statBest').textContent=best;
+  let total=0;Object.values(state.logs).forEach(log=>{total+=Object.values(log).filter(Boolean).length;});
+  document.getElementById('statTotal').textContent=total;
+  let wd=0,wp=0;const wData=[];
+  for(let i=6;i>=0;i--){
+    const dd=new Date();dd.setDate(dd.getDate()-i);
+    const k=dd.toISOString().slice(0,10),log=state.logs[k]||{};
+    const done=state.habits.filter(h=>log[h.id]).length;
+    wd+=done;wp+=state.habits.length;
+    wData.push({label:'日月火水木金土'.split('')[dd.getDay()],done,isToday:k===TODAY});
+  }
+  document.getElementById('statWeek').textContent=wp?Math.round(wd/wp*100)+'%':'0%';
+  const bars=document.getElementById('weeklyBars');bars.innerHTML='';
+  const maxV=Math.max(...wData.map(d=>d.done),1);
+  wData.forEach(d=>{
+    const wrap=document.createElement('div');wrap.className='bwrap';
+    const bar=document.createElement('div');bar.className='bbar';
+    bar.style.height=Math.round((d.done/maxV)*48+4)+'px';
+    bar.style.background=d.done>0?(d.isToday?'#34c759':'#007aff'):'#e5e5ea';
+    const lbl=document.createElement('div');lbl.className='blbl';lbl.textContent=d.label;
+    if(d.isToday)lbl.style.color='var(--text)';
+    wrap.appendChild(bar);wrap.appendChild(lbl);bars.appendChild(wrap);
+  });
+}
+
+// AIコーチ - サーバー経由で安全に通信
+function buildUserContext(){
+  const log=state.logs[TODAY]||{};
+  const todayDone=state.habits.filter(h=>log[h.id]).length;
+  let weekDone=0,weekPossible=0;
+  for(let i=0;i<7;i++){
+    const dd=new Date();dd.setDate(dd.getDate()-i);
+    const k=dd.toISOString().slice(0,10),l=state.logs[k]||{};
+    weekDone+=state.habits.filter(h=>l[h.id]).length;
+    weekPossible+=state.habits.length;
+  }
+  const weekPct=weekPossible?Math.round(weekDone/weekPossible*100):0;
+  const habitDetails=state.habits.map(h=>`「${h.name}」(現在${getStreak(h.id)}日連続、最長${getBestStreak(h.id)}日)`).join('、');
+  return `登録習慣: ${state.habits.length}個${habitDetails?` (${habitDetails})`:''}
+今日の達成: ${todayDone}/${state.habits.length}
+今週の達成率: ${weekPct}%`;
+}
+
+function addMessage(role,text){
+  const messages=document.getElementById('chatMessages');
+  const wrapper=document.createElement('div');
+  wrapper.className=`msg msg-${role==='assistant'?'ai':'user'}`;
+  const now=new Date();
+  wrapper.innerHTML=`<div class="msg-bubble">${text.replace(/\n/g,'<br>')}</div><div class="msg-time">${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}</div>`;
+  messages.appendChild(wrapper);
+  messages.scrollTop=messages.scrollHeight;
+}
+function showTyping(){
+  const messages=document.getElementById('chatMessages');
+  const el=document.createElement('div');
+  el.className='msg typing-indicator';el.id='typingIndicator';
+  el.innerHTML='<div class="typing-bubble"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>';
+  messages.appendChild(el);
+  messages.scrollTop=messages.scrollHeight;
+}
+function hideTyping(){const el=document.getElementById('typingIndicator');if(el)el.remove();}
+
+async function sendMessage(userText){
+  if(!userText.trim())return;
+  document.getElementById('chatInput').value='';
+  document.getElementById('chatSend').disabled=true;
+  addMessage('user',userText);
+  chatHistory.push({role:'user',content:userText});
+
+  // メッセージ数が増えすぎたら古いものを削除（コスト管理）
+  if(chatHistory.length>20){chatHistory=chatHistory.slice(-20);}
+
+  showTyping();
+  try{
+    // ★ APIキーはフロントに書かずサーバーに送るだけ
+    const res=await fetch(API_ENDPOINT,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        messages: chatHistory,
+        userContext: buildUserContext()
+      })
+    });
+
+    hideTyping();
+
+    if(res.status===429){
+      showToast('しばらく待ってからお試しください');
+      chatHistory.pop();
+      return;
+    }
+    if(!res.ok){
+      const err=await res.json().catch(()=>({}));
+      addMessage('assistant', err.error||'エラーが発生しました。もう一度お試しください。');
+      chatHistory.pop();
+      return;
+    }
+
+    const data=await res.json();
+    const reply=data.reply||'返答の生成に失敗しました。';
+    chatHistory.push({role:'assistant',content:reply});
+    addMessage('assistant',reply);
+
+  }catch(e){
+    hideTyping();
+    addMessage('assistant','接続エラーが発生しました。');
+    chatHistory.pop();
+  }
+  document.getElementById('chatSend').disabled=false;
+}
+
+document.getElementById('chatSend').onclick=()=>sendMessage(document.getElementById('chatInput').value);
+document.getElementById('chatInput').onkeydown=e=>{if(e.key==='Enter')sendMessage(e.target.value);};
+document.querySelectorAll('.quick-btn').forEach(btn=>{btn.onclick=()=>sendMessage(btn.dataset.q);});
+
+function renderAll(){renderHabits();renderProgress();renderCalendar();renderStats();}
+renderAll();
+
+// Service Worker登録（PWA対応）
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.log('SW registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>
